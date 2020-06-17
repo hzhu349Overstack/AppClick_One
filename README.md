@@ -1,6 +1,6 @@
 #  AppClick全埋点解决方案1：代理View.OnclickListener
 
-### 一、技术实现原理
+### 一、技术实现原理 ：android.R.id.content
 
 ###### 1、原理
 
@@ -10,4 +10,28 @@
 
 ![](<https://github.com/sunnnydaydev/AppStartAndEnd_One/blob/master/%E5%8E%9F%E7%90%86%E5%9B%BE.png>)
 
-待续！
+###### 3、代码实现
+
+
+
+###### 4、弊端
+
+
+
+### 二、优化：引入DecorView
+
+
+
+### 三、小结
+
+> 本章使用的技术方式缺点很多，就当学学技术吧！！！
+
+###### 1、缺点
+
+- 由于使用反射，效率比较低，对App的整体性能有一定的影响，也可能会引入兼容性方面的风险
+- Application.ActivityLifecycleCallbacks要求API 14+
+- View.hasOnClickListeners()要求API 15+
+- removeOnGlobalLayoutListener要求API 16+
+- 无法直接支持采集游离于Activity之上的View的点击，比如Dialog、Popup-Window等。
+
+待续！！！
