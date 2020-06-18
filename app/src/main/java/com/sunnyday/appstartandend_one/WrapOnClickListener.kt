@@ -12,9 +12,8 @@ class WrapOnClickListener(var source: View.OnClickListener) : View.OnClickListen
      * 代理onClick，新增一些逻辑
      * */
     override fun onClick(v: View?) {
-        // 调用原有的功能
-        source.onClick(v)
-        // 插入埋点代码
-        Log.d("WrapOnClickListener", "我是埋点代码")
+        Log.d("MainActivity", "用户点击事件之前：")// 代理的功能
+        source.onClick(v) // 调用原有的功能
+        Log.d("MainActivity", "用户点击事件之后:")//代理的功能
     }
 }

@@ -12,15 +12,157 @@
 
 ###### 3、代码实现
 
+（1）代理类
+
+```java
+
+/**
+ * Create by SunnyDay on 21:06 2020/06/17
+ */
+class WrapOnClickListener(var source: View.OnClickListener) : View.OnClickListener {
+
+    /**
+     * 代理onClick，新增一些逻辑
+     * */
+    override fun onClick(v: View?) {
+        Log.d("MainActivity", "用户点击事件之前：")// 代理的功能
+        source.onClick(v) // 调用原有的功能
+        Log.d("MainActivity", "用户点击事件之后:")//代理的功能
+    }
+}
+```
+
+（2）View点击事件的获取
+
+```java
+  /**
+     * get instance of OnClickListener
+     * @param view view
+     * */
+    private fun getOnClickListener(view: View): View.OnClickListener? {
+        val hasOnClickListener = view.hasOnClickListeners()
+        if (hasOnClickListener) {
+            val viewClazz = Class.forName("android.view.View")
+            //通过view的getListenerInfo 方法来获得 ListenerInfo
+            val listenerInfoMethod = viewClazz.getDeclaredMethod("getListenerInfo")
+            if (!listenerInfoMethod.isAccessible) {
+                listenerInfoMethod.isAccessible = true
+            }
+            val listenerInfoOjb = listenerInfoMethod.invoke(view)
+            val listenerInfoClazz = Class.forName("android.view.View\$ListenerInfo")
+            val onClickListenerField = listenerInfoClazz.getDeclaredField("mOnClickListener")
+            if (!onClickListenerField.isAccessible) {
+                onClickListenerField.isAccessible = true
+            }
+            return onClickListenerField.get(listenerInfoOjb) as View.OnClickListener
+        }
+        return null
+    }
+```
 
 
-###### 4、弊端
+
+（3）获取每个Activity的rootView（android.R.id.content），递归遍历代理即可。
+
+```java
+ registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
+            override fun onActivityPaused(activity: Activity) {
+
+            }
+
+            override fun onActivityStarted(activity: Activity) {
+
+            }
+
+            override fun onActivityDestroyed(activity: Activity) {
+
+            }
+
+            override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {
+
+            }
+
+            override fun onActivityStopped(activity: Activity) {
+
+            }
+
+            override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
+
+            }
+
+            override fun onActivityResumed(activity: Activity) {
+                // 获得每个activity页面的rootView（android.R.id.content）
+                val rootView: ViewGroup = activity.findViewById(android.R.id.content)
+                delegateViewsOnClickListener(activity, rootView)
+            }
+        })
+   
+    /**
+     * Delegate view OnClickListener
+     *@param context activity
+     * @param view rootView
+     *
+     * */
+    private fun delegateViewsOnClickListener(context: Context, view: View) {
+        // 获取当前view 设置的OnClickListener
+        val listener = getOnClickListener(view)
+         Log.d(tag,"listener:$listener")
+        //  判断已经设置的OnCLickListener类型，如果是自定义的WrapOnClickListener则说明
+        // 已经代理过了，不用再去代理。
+        if (null != listener && listener !is WrapOnClickListener) {
+            Log.d(tag,"setOnClickListener")
+            view.setOnClickListener(WrapOnClickListener(listener))
+        }
+        // 如果view 类型为ViewGroup则递归遍历子view
+        if (view is ViewGroup) {
+            val childCount = view.childCount
+            if (childCount > 0) {
+                for (i in 0 until childCount) {
+                    val childView = view.getChildAt(i)
+                    delegateViewsOnClickListener(context, childView)
+                }
+            }
+        }
+    }
+```
+
+
+
+(4)MainActivity&Button 点击事件测试
+
+```java
+ btn.setOnClickListener{
+            Log.d("MainActivity","我是按钮点击事件")
+        }
+
+log:
+2020-04-01 00:29:18.423 13681-13681/com.sunnyday.appstartandend_one D/MainActivity: 用户点击事件之前：
+2020-04-01 00:29:18.423 13681-13681/com.sunnyday.appstartandend_one D/MainActivity: 我是按钮点击事件
+2020-04-01 00:29:18.423 13681-13681/com.sunnyday.appstartandend_one D/MainActivity: 用户点击事件之后
+```
+
+###### 4、android.R.id.content 弊端
+
+（1）可正常采集的点击事件
+
+> - 通过代码设置mOnClickListener对象
+> - 通过android：onClick属性绑定处理函数
+> - 通过注解绑定处理函数，如ButterKnife绑定处理函数
+> - 含有Lambda语法的mOnClickListener（本文栗子中采取的）
+
+（2）无法采集的事件
+
+> 通过DataBinding绑定处理函数的点击事件是无法正常采集的
+>
+> 原因：这是由于DataBinding框架给Button设置mOnClickListener对象的动作稍微晚于onActivityResumed生命周期函数。即我们去代理Button已设置的mOnClickListener对象时，DataBinding框架还没有完成给Button设置mOnClickListener对象的操作，所以我们去遍历RootView时，当前View不满足hasOnClickListener的判断条件，因此没有去代理其mOnClickListener对象，从而导致无法采集其点击事件。
+>
+> 解决方案：既然是某些动作延迟导致的，那我们可以在Application.ActivityLifecycleCallbacks的onActivityResumed(final Activity activity)回调方法中，也去延迟一定的时间，然后再去调用delegateViewsOnClickListener(Context context，View view)方法遍历RootView，这样就相当于给DataBinding框架一些时间去处理。
 
 
 
 ### 二、优化：引入DecorView
 
-
+   待续！！！
 
 ### 三、小结
 
@@ -33,5 +175,15 @@
 - View.hasOnClickListeners()要求API 15+
 - removeOnGlobalLayoutListener要求API 16+
 - 无法直接支持采集游离于Activity之上的View的点击，比如Dialog、Popup-Window等。
+
+###### 2、收获
+
+> 内部类包名写法（外部类包名+外部类名$内部类名）
+>
+> 反射复习
+>
+> 代理设计模式实际运用
+>
+> appClick 埋点一种思想
 
 待续！！！
