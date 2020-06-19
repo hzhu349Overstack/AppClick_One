@@ -162,9 +162,72 @@ log:
 
 ### 二、优化：引入DecorView
 
-   待续！！！
+###### 1、ActionBar的兼容问题
 
-### 三、小结
+> - android SDK 14+ ，android.R.id.content这个view的区域不包括actionBar
+> - android Support Library Revision lower than 19：使用AppCompat，则显示区域包含ActionBar
+> - Support Library Revision 19(or greater)：使用AppCompat，则显示区域不包含ActionBar
+>
+> 可知：如果不使用Support Library或使用Support Library的最新版本，则android.R.id.content所指的区域都是ActionBar以下的内容，所以当手机屏幕上的菜单（MenuItem）点击事件是无法采集的。
+
+###### 2、DecorView的引入
+
+![](<https://github.com/sunnnydaydev/AppClick_One/blob/master/decorview.jpg>)
+
+> 针对上面提到的无法采集MenuItem点击事件的问题，我们只需要将之前方案中的activity.findViewById(android.R.id.content)换成activity.getWindow().getDecorView()，就可以遍历到MenuItem了，从而就可以自动采集到MenuItem点击事件了
+
+```kotlin
+    override fun onActivityResumed(activity: Activity) {
+                // 获得每个activity页面的rootView（android.R.id.content）
+              //  val rootView: ViewGroup = activity.findViewById(android.R.id.content)
+                delegateViewsOnClickListener(activity, activity.window.decorView)
+            }
+```
+
+
+
+###  三、继续优化：引入ViewTreeObserver.OnGlobalLayoutListener
+
+待续！！！
+
+
+
+### 四、额外收获
+
+###### 1、view.getContext
+
+> 通过view.getContext()方法获取的Context有可能是ContextWrapper类型，此类型是无法直接转成Activity对象的，需要通过context.getBaseContext()方法逐层找到那个Activity
+
+```java
+/**
+ * 获取view 所属的activity
+ * @param view view
+ * */
+fun getActivityFromView(view: View): Activity? {
+    var activity: Activity? = null
+    try {
+        var context = view.context
+        if (context is Activity) {
+            activity = context
+        } else if (context is ContextWrapper) {
+            while (context !is Activity && context is ContextWrapper) {
+                context = context.baseContext
+            }
+            if (context is Activity) {
+                activity = context
+            }
+        }
+
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+    return activity
+}
+```
+
+
+
+### 小结
 
 > 本章使用的技术方式缺点很多，就当学学技术吧！！！
 
@@ -176,7 +239,7 @@ log:
 - removeOnGlobalLayoutListener要求API 16+
 - 无法直接支持采集游离于Activity之上的View的点击，比如Dialog、Popup-Window等。
 
-###### 2、收获
+###### 2、小结
 
 > 内部类包名写法（外部类包名+外部类名$内部类名）
 >

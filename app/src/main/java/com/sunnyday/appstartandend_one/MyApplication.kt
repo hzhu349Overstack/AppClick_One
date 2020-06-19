@@ -43,8 +43,8 @@ class MyApplication : Application() {
 
             override fun onActivityResumed(activity: Activity) {
                 // 获得每个activity页面的rootView（android.R.id.content）
-                val rootView: ViewGroup = activity.findViewById(android.R.id.content)
-                delegateViewsOnClickListener(activity, rootView)
+              //  val rootView: ViewGroup = activity.findViewById(android.R.id.content)
+                delegateViewsOnClickListener(activity, activity.window.decorView)
             }
         })
     }
