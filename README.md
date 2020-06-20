@@ -188,9 +188,53 @@ log:
 
 ###  三、继续优化：引入ViewTreeObserver.OnGlobalLayoutListener
 
-待续！！！
+###### 1、开发者动态添加view问题
 
+> 当前的方案还有一个问题，即：该方案无法采集onResume()生命周期之后动态创建的View点击事件。如下：
 
+```java
+class MainActivity : AppCompatActivity() {
+
+    @SuppressLint("SetTextI18n")
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        val textView = AppCompatTextView(this)
+        textView.text = "我是动态添加的view"
+
+        btn.setOnClickListener{
+            Log.d("MainActivity","我是按钮点击事件")
+            root_relative_layout.addView(textView)//点击按钮时给RelativeLayout添加个AppCompatTextView
+        }
+        
+    }
+}
+```
+
+> 这是因为我们是在Activity的onResume生命周期之前去遍历整个RootView并代理其mOnClickListener对象的。如果是在onResume生命周期之后动态创建的View，当时肯定是无法被遍历到的，后来我们又没有再次去遍历，所以它的mOnClickListener对象就没有被我们代理过。因此，点击控件时，是无法采集到其点击事件的。
+
+###### 2、引入：ViewTreeObserver.OnGlobalLayoutListener
+
+> view视图树发生变化时这个方法会回调，根据这个原理，我们可以监听view视图树的变化，再次遍历RootView即可。
+
+```java
+ override fun onActivityResumed(activity: Activity) {
+                // 获得每个activity页面的rootView（android.R.id.content）
+                //  val rootView: ViewGroup = activity.findViewById(android.R.id.content)
+
+                val rootView = activity.window.decorView
+                rootView.viewTreeObserver.addOnGlobalLayoutListener {
+                    delegateViewsOnClickListener(activity, rootView)
+                }
+            }
+```
+
+注意点：
+
+- 最好在onDestory中销毁viewTreeObserver监听对象（本文省略了）
+- 采用这种方案之后，也可以直接采集通过DataBinding绑定的点击事件了，同时之前采用延迟的方案也可以废弃了
+- 由于该方案遍历的是Activity的RootView，所以游离于Activity之上的View的点击是无法采集的，比如Dialog、PopupWindow等
 
 ### 四、额外收获
 
@@ -249,4 +293,3 @@ fun getActivityFromView(view: View): Activity? {
 >
 > appClick 埋点一种思想
 
-待续！！！

@@ -43,8 +43,13 @@ class MyApplication : Application() {
 
             override fun onActivityResumed(activity: Activity) {
                 // 获得每个activity页面的rootView（android.R.id.content）
-              //  val rootView: ViewGroup = activity.findViewById(android.R.id.content)
-                delegateViewsOnClickListener(activity, activity.window.decorView)
+                //  val rootView: ViewGroup = activity.findViewById(android.R.id.content)
+
+                val rootView = activity.window.decorView
+                rootView.viewTreeObserver.addOnGlobalLayoutListener {
+                    delegateViewsOnClickListener(activity, rootView)
+                }
+
             }
         })
     }
@@ -58,11 +63,11 @@ class MyApplication : Application() {
     private fun delegateViewsOnClickListener(context: Context, view: View) {
         // 获取当前view 设置的OnClickListener
         val listener = getOnClickListener(view)
-         Log.d(tag,"listener:$listener")
+        Log.d(tag, "listener:$listener")
         //  判断已经设置的OnCLickListener类型，如果是自定义的WrapOnClickListener则说明
         // 已经代理过了，不用再去代理。
         if (null != listener && listener !is WrapOnClickListener) {
-            Log.d(tag,"setOnClickListener")
+            Log.d(tag, "setOnClickListener")
             view.setOnClickListener(WrapOnClickListener(listener))
         }
         // 如果view 类型为ViewGroup则递归遍历子view
